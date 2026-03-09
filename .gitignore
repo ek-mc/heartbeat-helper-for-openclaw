@@ -1,0 +1,10 @@
+# Local state / runtime
+state/
+logs/
+*.log
+
+# macOS
+.DS_Store
+
+# launchd overrides / local copies
+*.local.plist
