@@ -10,7 +10,8 @@ APP_PM2_NAME="${APP_PM2_NAME:-my-local-app}"
 MAX_APP_TIME="${MAX_APP_TIME:-8}"
 MAX_GATEWAY_TIME="${MAX_GATEWAY_TIME:-8}"
 FAILURES_BEFORE_RESTART="${FAILURES_BEFORE_RESTART:-2}"
-FAILURES_BEFORE_FIX="${FAILURES_BEFORE_FIX:-3}"
+FAILURES_BEFORE_DOCTOR="${FAILURES_BEFORE_DOCTOR:-3}"
+FAILURES_BEFORE_FIX="${FAILURES_BEFORE_FIX:-4}"
 ENABLE_DOCTOR_FIX="${ENABLE_DOCTOR_FIX:-true}"
 
 mkdir -p "$LOG_DIR"
@@ -104,10 +105,15 @@ failure_count=$((failure_count + 1))
 last_reason="$(IFS=,; echo "${issues[*]}")"
 log "Health check failed (#${failure_count}): ${last_reason}"
 
-if [[ "$failure_count" -ge "$FAILURES_BEFORE_RESTART" && "$last_phase" != "restart" ]]; then
+if [[ "$failure_count" -ge "$FAILURES_BEFORE_RESTART" && "$last_phase" != "restart" && "$last_phase" != "doctor" && "$last_phase" != "doctor_fix" ]]; then
   restart_gateway
   restart_app
   last_phase="restart"
+fi
+
+if [[ "$ENABLE_DOCTOR_FIX" == "true" && "$failure_count" -ge "$FAILURES_BEFORE_DOCTOR" && "$last_phase" != "doctor" && "$last_phase" != "doctor_fix" ]]; then
+  run_doctor
+  last_phase="doctor"
 fi
 
 if [[ "$ENABLE_DOCTOR_FIX" == "true" && "$failure_count" -ge "$FAILURES_BEFORE_FIX" && "$last_phase" != "doctor_fix" ]]; then
