@@ -14,10 +14,10 @@ Every 5 minutes it checks:
 
 1. **First failure** → log only
 2. **Second consecutive failure** → restart gateway + PM2 app
-3. **Third consecutive failure** → run:
-   - `openclaw doctor --fix --non-interactive --yes`
+3. **Third consecutive failure** → run `openclaw doctor --non-interactive` (diagnose only, no changes)
+4. **Fourth consecutive failure** → run `openclaw doctor --fix --non-interactive --yes`
 
-This keeps the behavior simple and aggressive enough to recover from common stuck states without spamming actions on a one-off hiccup.
+This keeps the behavior graduated: cheap recovery first, diagnosis before any destructive fix, and the aggressive `--fix` only as a last resort after repeated failures.
 
 ## Why this exists
 
@@ -52,7 +52,8 @@ Environment variables:
 - `APP_URL` → default: `http://localhost:3000/`
 - `APP_PM2_NAME` → default: `my-local-app`
 - `FAILURES_BEFORE_RESTART` → default: `2`
-- `FAILURES_BEFORE_FIX` → default: `3`
+- `FAILURES_BEFORE_DOCTOR` → default: `3`
+- `FAILURES_BEFORE_FIX` → default: `4`
 - `ENABLE_DOCTOR_FIX` → default: `true`
 
 ## Example LaunchAgent
@@ -123,8 +124,9 @@ This repository is intentionally generic:
 ## Notes
 
 - `openclaw doctor --fix` is intentionally not the first step.
-- First, try cheap recovery.
-- Only escalate to doctor fix after repeated failures.
+- First, try cheap recovery (restart).
+- Then run a plain `doctor` pass to surface diagnostics without making changes.
+- Only escalate to `doctor --fix` after repeated failures.
 
 ## License
 
