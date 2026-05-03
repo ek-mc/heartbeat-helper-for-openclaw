@@ -55,6 +55,17 @@ Environment variables:
 - `FAILURES_BEFORE_DOCTOR` → default: `3`
 - `FAILURES_BEFORE_FIX` → default: `4`
 - `ENABLE_DOCTOR_FIX` → default: `true`
+- `DRY_RUN` → default: `false` — set to `true` to log what the watchdog *would* do without restarting anything
+
+## Dry run
+
+Useful for testing the script safely on a live machine before deploying it for real:
+
+```bash
+DRY_RUN=true bash openclaw-watchdog.sh
+```
+
+With `DRY_RUN=true` the script still runs health checks and tracks failure counts, but all recovery actions (restart, doctor, doctor --fix) are replaced with log lines prefixed `[DRY RUN] would:`. No processes are touched.
 
 ## Example LaunchAgent
 

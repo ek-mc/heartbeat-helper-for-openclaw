@@ -13,6 +13,7 @@ FAILURES_BEFORE_RESTART="${FAILURES_BEFORE_RESTART:-2}"
 FAILURES_BEFORE_DOCTOR="${FAILURES_BEFORE_DOCTOR:-3}"
 FAILURES_BEFORE_FIX="${FAILURES_BEFORE_FIX:-4}"
 ENABLE_DOCTOR_FIX="${ENABLE_DOCTOR_FIX:-true}"
+DRY_RUN="${DRY_RUN:-false}"
 
 mkdir -p "$LOG_DIR"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
@@ -25,6 +26,10 @@ LOG_FILE="$LOG_DIR/watchdog.log"
 
 log() {
   echo "[$TS] $*" | tee -a "$LOG_FILE"
+}
+
+dry_run_log() {
+  log "[DRY RUN] would: $*"
 }
 
 load_state() {
@@ -80,6 +85,10 @@ run_doctor_fix() {
   openclaw doctor --fix --non-interactive --yes >> "$LOG_FILE" 2>&1 || true
 }
 
+if [[ "$DRY_RUN" == "true" ]]; then
+  log "DRY RUN mode enabled — no restarts or doctor commands will be executed"
+fi
+
 load_state
 
 issues=()
@@ -106,18 +115,30 @@ last_reason="$(IFS=,; echo "${issues[*]}")"
 log "Health check failed (#${failure_count}): ${last_reason}"
 
 if [[ "$failure_count" -ge "$FAILURES_BEFORE_RESTART" && "$last_phase" != "restart" && "$last_phase" != "doctor" && "$last_phase" != "doctor_fix" ]]; then
-  restart_gateway
-  restart_app
+  if [[ "$DRY_RUN" == "true" ]]; then
+    dry_run_log "restart gateway + PM2 app (${APP_PM2_NAME})"
+  else
+    restart_gateway
+    restart_app
+  fi
   last_phase="restart"
 fi
 
 if [[ "$ENABLE_DOCTOR_FIX" == "true" && "$failure_count" -ge "$FAILURES_BEFORE_DOCTOR" && "$last_phase" != "doctor" && "$last_phase" != "doctor_fix" ]]; then
-  run_doctor
+  if [[ "$DRY_RUN" == "true" ]]; then
+    dry_run_log "openclaw doctor --non-interactive"
+  else
+    run_doctor
+  fi
   last_phase="doctor"
 fi
 
 if [[ "$ENABLE_DOCTOR_FIX" == "true" && "$failure_count" -ge "$FAILURES_BEFORE_FIX" && "$last_phase" != "doctor_fix" ]]; then
-  run_doctor_fix
+  if [[ "$DRY_RUN" == "true" ]]; then
+    dry_run_log "openclaw doctor --fix --non-interactive --yes"
+  else
+    run_doctor_fix
+  fi
   last_phase="doctor_fix"
 fi
 
